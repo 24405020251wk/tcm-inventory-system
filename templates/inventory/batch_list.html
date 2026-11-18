@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% load ui_extras %}
+{% block title %}批次库存{% endblock %}
+{% block page_title %}批次库存{% endblock %}
+{% block page_sub %}按批次追溯库存来源、效期与供应商{% endblock %}
+
+{% block content %}
+<div class="filter-bar">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label">关键词</label>
+            <input type="text" name="q" value="{{ keyword }}" class="form-control" placeholder="批次号 / 药材名称">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">药材</label>
+            <select name="herb" class="form-select">
+                <option value="">全部药材</option>
+                {% for h in herbs %}
+                    <option value="{{ h.id }}" {% if herb_id == h.id|stringformat:"s" %}selected{% endif %}>{{ h.name }}（{{ h.code }}）</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">效期筛选</label>
+            <select name="expiring" class="form-select">
+                <option value="">全部</option>
+                <option value="30" {% if expiring == "30" %}selected{% endif %}>30 天内</option>
+                <option value="90" {% if expiring == "90" %}selected{% endif %}>90 天内</option>
+                <option value="180" {% if expiring == "180" %}selected{% endif %}>180 天内</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button class="btn btn-tcm"><i class="bi bi-search me-1"></i>查询</button>
+            <a href="{% url 'inventory:batch_list' %}" class="btn btn-outline-secondary">重置</a>
+        </div>
+    </form>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="text-muted small">共 {{ total }} 个在库批次</div>
+    <a href="{% url 'inventory:stock' %}" class="btn btn-sm btn-outline-secondary">返回库存查询</a>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+            <tr>
+                <th>批次号</th><th>药材</th><th>生产日期</th><th>有效期至</th>
+                <th class="text-end">剩余数量</th><th class="text-end">初始数量</th>
+                <th class="text-end">单价</th><th>供应商</th><th>状态</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for batch in page_obj %}
+                <tr class="{% if batch.is_expired %}table-danger{% endif %}">
+                    <td class="fw-semibold">{{ batch.batch_no }}</td>
+                    <td>
+                        <a href="{% url 'herbs:detail' batch.herb.pk %}" class="text-decoration-none">{{ batch.herb.name }}</a>
+                        <div class="text-muted small">{{ batch.herb.code }}</div>
+                    </td>
+                    <td class="text-muted">{{ batch.production_date|date:"Y-m-d"|default:"—" }}</td>
+                    <td class="{% if batch.is_near_expiry %}text-danger fw-semibold{% endif %}">
+                        {{ batch.expiry_date|date:"Y-m-d"|default:"—" }}
+                        {% if batch.is_expired %}<span class="badge-soft danger ms-1">过期</span>
+                        {% elif batch.is_near_expiry %}<span class="badge-soft warning ms-1">近效期</span>{% endif %}
+                    </td>
+                    <td class="text-end fw-semibold">{{ batch.remaining_quantity|floatformat:2 }} {{ batch.herb.unit }}</td>
+                    <td class="text-end text-muted">{{ batch.quantity|floatformat:2 }}</td>
+                    <td class="text-end text-muted">¥{{ batch.unit_price|money }}</td>
+                    <td class="text-muted">{{ batch.supplier|default:"—" }}</td>
+                    <td>
+                        <span class="badge-soft {% if batch.status == 'active' %}success{% elif batch.status == 'expired' %}danger{% else %}secondary{% endif %}">
+                            {{ batch.get_status_display }}
+                        </span>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="9"><div class="empty-state"><i class="bi bi-layers"></i>暂无批次库存</div></td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% include "includes/pagination.html" %}
+{% endblock %}

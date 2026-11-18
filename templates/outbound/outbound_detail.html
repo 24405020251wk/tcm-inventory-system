@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% load ui_extras %}
+{% block title %}{{ order.order_no }}{% endblock %}
+{% block page_title %}出库单 {{ order.order_no }}{% endblock %}
+{% block page_sub %}{{ order.department }} · {{ order.apply_date|date:"Y年m月d日" }} 申请{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-3">
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>单据信息</span>
+                <span class="badge-soft {{ order.status|status_badge }}">{{ order.get_status_display }}</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4"><div class="text-muted small">领用部门</div><div>{{ order.department }}</div></div>
+                    <div class="col-md-4"><div class="text-muted small">领用用途</div><div>{{ order.purpose|default:"—" }}</div></div>
+                    <div class="col-md-4"><div class="text-muted small">申请人</div><div>{{ order.applicant.display_name }}</div></div>
+                    <div class="col-md-4"><div class="text-muted small">申请日期</div><div>{{ order.apply_date|date:"Y-m-d" }}</div></div>
+                    <div class="col-md-4"><div class="text-muted small">审核人</div><div>{{ order.approver.display_name|default:"—" }}</div></div>
+                    <div class="col-md-4"><div class="text-muted small">审核时间</div><div>{{ order.approve_time|date:"Y-m-d H:i"|default:"—" }}</div></div>
+                    <div class="col-md-4"><div class="text-muted small">审核意见</div><div>{{ order.approve_remark|default:"—" }}</div></div>
+                    <div class="col-12">
+                        <div class="text-muted small">异常备注</div>
+                        <div>{% if order.exception_note %}<span class="text-danger">{{ order.exception_note }}</span>{% else %}—{% endif %}</div>
+                    </div>
+                    <div class="col-12"><div class="text-muted small">其他说明</div><div>{{ order.remark|default:"—" }}</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header">流转进度</div>
+            <div class="card-body">
+                <ul class="timeline mb-0">
+                    <li>
+                        <div class="fw-semibold">创建申请</div>
+                        <div class="text-muted small">{{ order.created_at|date:"Y-m-d H:i" }} · {{ order.applicant.display_name }}</div>
+                    </li>
+                    <li>
+                        <div class="fw-semibold {% if order.status == 'pending' %}text-warning-emphasis{% endif %}">提交审核</div>
+                        <div class="text-muted small">
+                            {% if order.status != "draft" %}已提交{% else %}待提交{% endif %}
+                        </div>
+                    </li>
+                    <li>
+                        <div class="fw-semibold {% if order.status == 'approved' %}text-success{% elif order.status == 'rejected' %}text-danger{% endif %}">
+                            {{ order.get_status_display }}
+                        </div>
+                        <div class="text-muted small">
+                            {% if order.approve_time %}{{ order.approve_time|date:"Y-m-d H:i" }} · {{ order.approver.display_name }}{% else %}等待审核人处理{% endif %}
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'outbound:print' order.pk %}" target="_blank" class="btn btn-outline-secondary">打印 / 另存 PDF</a>
+            {% if order.status == "draft" or order.status == "rejected" %}
+                <a href="{% url 'outbound:edit' order.pk %}" class="btn btn-outline-secondary">编辑</a>
+                <form method="post" action="{% url 'outbound:submit' order.pk %}" data-confirm="提交后进入审核流程，是否继续？">
+                    {% csrf_token %}
+                    <button class="btn btn-tcm">提交审核</button>
+                </form>
+            {% endif %}
+            {% if order.status == "pending" and "outbound.approve" in menu_codes %}
+                <button class="btn btn-tcm" data-bs-toggle="modal" data-bs-target="#approveModal">审核通过</button>
+                <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">驳回</button>
+            {% endif %}
+            {% if order.status == "draft" or order.status == "pending" or order.status == "rejected" %}
+                <form method="post" action="{% url 'outbound:cancel' order.pk %}" data-confirm="确定作废该出库单吗？">
+                    {% csrf_token %}
+                    <button class="btn btn-outline-secondary">作废</button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">领用明细</div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+            <tr><th>药材</th><th>指定批次</th><th>备注</th><th class="text-end">领用数量</th><th class="text-end">当前库存</th></tr>
+            </thead>
+            <tbody>
+            {% for item in order.items.all %}
+                <tr>
+                    <td>
+                        <a href="{% url 'herbs:detail' item.herb.pk %}" class="text-decoration-none">{{ item.herb.name }}</a>
+                        <span class="text-muted small">（{{ item.herb.code }}）</span>
+                    </td>
+                    <td class="text-muted">{{ item.batch.batch_no|default:"系统自动分配" }}</td>
+                    <td class="text-muted">{{ item.remark|default:"—" }}</td>
+                    <td class="text-end fw-semibold">{{ item.quantity|floatformat:2 }} {{ item.herb.unit }}</td>
+                    <td class="text-end text-muted">{{ item.herb.total_stock|floatformat:2 }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5"><div class="empty-state"><i class="bi bi-list-ul"></i>暂无明细</div></td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>附件与凭证</span>
+        <span class="text-muted small">支持图片 / PDF / Office 文档 / txt，单个不超过 5MB</span>
+    </div>
+    <div class="card-body">
+        <form method="post" action="{% url 'outbound:attachment_upload' order.pk %}"
+              enctype="multipart/form-data" class="row g-2 align-items-end mb-3">
+            {% csrf_token %}
+            <div class="col-md-5">
+                <label class="form-label small">选择文件</label>
+                {{ attachment_form.file }}
+            </div>
+            <div class="col-md-5">
+                <label class="form-label small">附件说明</label>
+                {{ attachment_form.title }}
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-tcm w-100">上传附件</button>
+            </div>
+        </form>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                <tr><th>文件</th><th>说明</th><th>上传人</th><th>上传时间</th><th class="text-end">操作</th></tr>
+                </thead>
+                <tbody>
+                {% for att in order.attachments.all %}
+                    <tr>
+                        <td>
+                            <a href="{{ att.file.url }}" target="_blank" class="text-decoration-none">
+                                <i class="bi {% if att.is_image %}bi-file-earmark-image{% else %}bi-file-earmark-text{% endif %}"></i>
+                                {{ att.filename }}
+                            </a>
+                            <span class="text-muted small">（{{ att.size_display }}）</span>
+                        </td>
+                        <td class="text-muted">{{ att.title|default:"—" }}</td>
+                        <td class="text-muted">{{ att.uploaded_by.display_name|default:"—" }}</td>
+                        <td class="text-muted">{{ att.uploaded_at|date:"Y-m-d H:i" }}</td>
+                        <td class="text-end">
+                            <form method="post"
+                                  action="{% url 'outbound:attachment_delete' order.pk att.pk %}"
+                                  data-confirm="确定删除该附件吗？">
+                                {% csrf_token %}
+                                <button class="btn btn-sm btn-outline-danger">删除</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="5"><div class="empty-state"><i class="bi bi-paperclip"></i>暂无附件，可上传领用凭证或现场照片</div></td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a href="{% url 'outbound:list' %}" class="btn btn-outline-secondary">返回列表</a>
+</div>
+
+{% if order.status == "pending" and "outbound.approve" in menu_codes %}
+<div class="modal fade" id="approveModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content" method="post" action="{% url 'outbound:approve' order.pk %}">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h5 class="modal-title">审核通过</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">审核通过后系统将按近效期优先扣减批次库存，操作不可撤销。</p>
+                <label class="form-label">审核意见</label>
+                <textarea name="approve_remark" class="form-control" rows="3" placeholder="如：同意领用，请按规定使用"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-tcm">确认通过并出库</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content" method="post" action="{% url 'outbound:reject' order.pk %}">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h5 class="modal-title">驳回申请</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label required">驳回原因</label>
+                <textarea name="approve_remark" class="form-control" rows="3" required
+                          placeholder="请填写驳回原因，便于申请人修改"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-danger">确认驳回</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

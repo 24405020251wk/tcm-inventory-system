@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}无访问权限{% endblock %}
+{% block page_title %}无访问权限{% endblock %}
+{% block page_sub %}当前角色未被授予该功能权限{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-shield-lock" style="font-size:52px;color:#b5893f;"></i>
+        <h5 class="mt-3">抱歉，你没有访问该页面的权限</h5>
+        <p class="text-muted mb-1">
+            需要的权限编码：<code>{{ required_code }}</code>
+        </p>
+        <p class="text-muted small">当前角色：{{ user.role_name }}。如需开通，请联系系统管理员在「角色与权限」中勾选对应菜单。</p>
+        <a href="{% url 'core:dashboard' %}" class="btn btn-tcm mt-2">返回工作台</a>
+    </div>
+</div>
+{% endblock %}

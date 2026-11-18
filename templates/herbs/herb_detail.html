@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% load ui_extras %}
+{% block title %}{{ herb.name }}{% endblock %}
+{% block page_title %}{{ herb.name }} <span class="text-muted fs-6">{{ herb.code }}</span>{% endblock %}
+{% block page_sub %}{{ herb.category.name }} · {{ herb.spec|default:"统货" }} · {{ herb.origin|default:"产地未记录" }}{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-3">
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>档案信息</span>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'herbs:edit' herb.pk %}" class="btn btn-sm btn-outline-secondary">编辑档案</a>
+                    <a href="{% url 'herbs:list' %}" class="btn btn-sm btn-outline-secondary">返回列表</a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4"><div class="text-muted small">拼音助记码</div><div>{{ herb.pinyin|default:"—" }}</div></div>
+                    <div class="col-md-4"><div class="text-muted small">计量单位</div><div>{{ herb.unit }}</div></div>
+                    <div class="col-md-4"><div class="text-muted small">保质期</div><div>{{ herb.shelf_life_days }} 天</div></div>
+                    <div class="col-md-4"><div class="text-muted small">贮藏条件</div><div>{{ herb.storage_condition }}</div></div>
+                    <div class="col-md-4"><div class="text-muted small">参考单价</div><div>¥{{ herb.price|money }} / {{ herb.unit }}</div></div>
+                    <div class="col-md-4"><div class="text-muted small">库存下限</div><div>{{ herb.min_stock|floatformat:2 }} {{ herb.unit }}</div></div>
+                    <div class="col-12"><div class="text-muted small">备注</div><div>{{ herb.remark|default:"—" }}</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="stat-card mb-3">
+            <div class="stat-label">当前库存</div>
+            <div class="stat-value">{{ herb.total_stock|floatformat:2 }} <small>{{ herb.unit }}</small></div>
+            <div class="stat-foot">
+                <span class="badge-soft {{ herb.stock_status_class }}">{{ herb.stock_status }}</span>
+                <span class="ms-2">库存金额 ¥{{ herb.stock_value|money }}</span>
+            </div>
+            <i class="bi bi-box-seam stat-icon"></i>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">在库批次</div>
+            <div class="stat-value">{{ batches|length }} <small>个</small></div>
+            <div class="stat-foot">按有效期升序排列，出库自动近效期优先</div>
+            <i class="bi bi-layers stat-icon"></i>
+        </div>
+    </div>
+</div>
+
+<ul class="nav nav-tabs mb-0" role="tablist">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-batch">批次库存</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ledger">库存流水</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-biz">业务记录</button></li>
+</ul>
+
+<div class="tab-content card border-top-0" style="border-radius:0 0 12px 12px;">
+    <div class="tab-pane fade show active p-0" id="tab-batch">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                <tr>
+                    <th>批次号</th><th>生产日期</th><th>有效期至</th>
+                    <th class="text-end">入库数量</th><th class="text-end">剩余数量</th>
+                    <th class="text-end">单价</th><th>供应商</th><th>状态</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for batch in batches %}
+                    <tr>
+                        <td class="fw-semibold">{{ batch.batch_no }}</td>
+                        <td class="text-muted">{{ batch.production_date|date:"Y-m-d"|default:"—" }}</td>
+                        <td class="{% if batch.is_near_expiry %}text-danger{% endif %}">
+                            {{ batch.expiry_date|date:"Y-m-d"|default:"—" }}
+                            {% if batch.is_expired %}<span class="badge-soft danger ms-1">已过期</span>{% endif %}
+                        </td>
+                        <td class="text-end">{{ batch.quantity|floatformat:2 }}</td>
+                        <td class="text-end fw-semibold">{{ batch.remaining_quantity|floatformat:2 }}</td>
+                        <td class="text-end text-muted">¥{{ batch.unit_price|money }}</td>
+                        <td class="text-muted">{{ batch.supplier|default:"—" }}</td>
+                        <td>
+                            <span class="badge-soft {% if batch.status == 'active' %}success{% elif batch.status == 'expired' %}danger{% else %}secondary{% endif %}">
+                                {{ batch.get_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="8"><div class="empty-state"><i class="bi bi-layers"></i>暂无批次，请先创建入库单并确认入库</div></td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="tab-pane fade p-0" id="tab-ledger">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                <tr><th>时间</th><th>业务类型</th><th>批次</th><th class="text-end">变动数量</th>
+                    <th class="text-end">变动后库存</th><th>关联单号</th><th>操作人</th></tr>
+                </thead>
+                <tbody>
+                {% for log in ledgers %}
+                    <tr>
+                        <td class="text-muted small">{{ log.created_at|date:"Y-m-d H:i" }}</td>
+                        <td><span class="badge-soft {% if log.biz_type == 'in' %}success{% elif log.biz_type == 'out' %}warning{% else %}secondary{% endif %}">{{ log.get_biz_type_display }}</span></td>
+                        <td class="text-muted">{{ log.batch.batch_no|default:"—" }}</td>
+                        <td class="text-end {% if log.change_qty < 0 %}text-danger{% else %}text-success{% endif %}">
+                            {{ log.change_qty|floatformat:2 }}
+                        </td>
+                        <td class="text-end">{{ log.after_qty|floatformat:2 }}</td>
+                        <td class="text-muted small">{{ log.ref_no }}</td>
+                        <td class="text-muted">{{ log.operator.display_name|default:"系统" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="7"><div class="empty-state"><i class="bi bi-clock-history"></i>暂无流水记录</div></td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="tab-biz">
+        <div class="row g-0">
+            <div class="col-md-6 border-end">
+                <div class="p-3 border-bottom fw-semibold">入库记录</div>
+                <table class="table table-sm mb-0">
+                    <tbody>
+                    {% for item in inbound_items %}
+                        <tr>
+                            <td><a href="{% url 'inbound:detail' item.order.pk %}" class="text-decoration-none">{{ item.order.order_no }}</a></td>
+                            <td class="text-muted small">{{ item.order.inbound_date|date:"Y-m-d" }}</td>
+                            <td class="text-end">{{ item.quantity|floatformat:2 }}{{ herb.unit }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td class="text-muted small p-3">暂无入库记录</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <div class="p-3 border-bottom fw-semibold">出库记录</div>
+                <table class="table table-sm mb-0">
+                    <tbody>
+                    {% for item in outbound_items %}
+                        <tr>
+                            <td><a href="{% url 'outbound:detail' item.order.pk %}" class="text-decoration-none">{{ item.order.order_no }}</a></td>
+                            <td class="text-muted small">{{ item.order.apply_date|date:"Y-m-d" }}</td>
+                            <td class="text-end">{{ item.quantity|floatformat:2 }}{{ herb.unit }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td class="text-muted small p-3">暂无出库记录</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

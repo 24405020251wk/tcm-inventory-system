@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{% if instance %}编辑药材{% else %}新增药材{% endif %}{% endblock %}
+{% block page_title %}{% if instance %}编辑药材档案{% else %}新增药材档案{% endif %}{% endblock %}
+{% block page_sub %}编码唯一，保存后可在详情页查看批次与流水{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger py-2">{{ form.non_field_errors|join:" " }}</div>
+        {% endif %}
+        <div class="row g-3">
+            {% for field in form %}
+                <div class="col-md-4">
+                    <label class="form-label {% if field.field.required %}required{% endif %}" for="{{ field.id_for_label }}">
+                        {{ field.label }}
+                    </label>
+                    {{ field }}
+                    {% if field.errors %}<ul class="errorlist"><li>{{ field.errors.0 }}</li></ul>{% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        <div class="alert alert-light border mt-4 mb-0 small">
+            <i class="bi bi-lightbulb me-1"></i>
+            库存下限用于低库存预警；保质期用于计算批次有效期提醒（默认 730 天）。
+            {% if not categories %}
+                <a href="{% url 'herbs:category_create' %}" class="ms-1">先去创建药材分类 →</a>
+            {% endif %}
+        </div>
+        <div class="d-flex gap-2 mt-4">
+            <button class="btn btn-tcm"><i class="bi bi-check2 me-1"></i>保存档案</button>
+            <a href="{% if instance %}{% url 'herbs:detail' instance.pk %}{% else %}{% url 'herbs:list' %}{% endif %}"
+               class="btn btn-outline-secondary">取消</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

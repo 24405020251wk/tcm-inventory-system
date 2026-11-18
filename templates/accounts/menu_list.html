@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}菜单管理{% endblock %}
+{% block page_title %}菜单权限{% endblock %}
+{% block page_sub %}菜单即权限点，code 与视图装饰器一一对应{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-end mb-3">
+    <a href="{% url 'accounts:menu_create' %}" class="btn btn-tcm"><i class="bi bi-plus-lg me-1"></i>新增菜单</a>
+</div>
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+            <tr>
+                <th>分组</th>
+                <th>菜单名称</th>
+                <th>权限编码</th>
+                <th>路由名称</th>
+                <th>接口权限标识</th>
+                <th>排序</th>
+                <th>状态</th>
+                <th class="text-end">操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for menu in menus %}
+                <tr>
+                    <td><span class="badge-soft secondary">{{ menu.group_name }}</span></td>
+                    <td><i class="bi {{ menu.icon }} me-1 text-success"></i>{{ menu.name }}</td>
+                    <td><code>{{ menu.code }}</code></td>
+                    <td class="text-muted small">{{ menu.url_name|default:"—" }}</td>
+                    <td class="text-muted small">{{ menu.api_scope|default:"—" }}</td>
+                    <td class="text-muted">{{ menu.sort }}</td>
+                    <td>{% if menu.is_active %}<span class="badge-soft success">启用</span>{% else %}<span class="badge-soft secondary">停用</span>{% endif %}</td>
+                    <td class="text-end">
+                        <a href="{% url 'accounts:menu_edit' menu.pk %}" class="btn btn-sm btn-outline-secondary">编辑</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="8"><div class="empty-state"><i class="bi bi-list-nested"></i>暂无菜单，请先执行 python manage.py init_demo</div></td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

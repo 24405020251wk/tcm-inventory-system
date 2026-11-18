@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}药材分类{% endblock %}
+{% block page_title %}药材分类{% endblock %}
+{% block page_sub %}分类用于档案归集与库存结构统计{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="form-card">
+            <div class="section-title">新增分类</div>
+            <form method="post" action="{% url 'herbs:category_create' %}">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label required">分类名称</label>
+                    <input type="text" name="name" class="form-control" placeholder="如 根茎类" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label required">分类编码</label>
+                    <input type="text" name="code" class="form-control" placeholder="如 root" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">排序</label>
+                    <input type="number" name="sort" value="10" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">备注</label>
+                    <input type="text" name="remark" class="form-control">
+                </div>
+                <button class="btn btn-tcm w-100"><i class="bi bi-plus-lg me-1"></i>添加分类</button>
+            </form>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <span>分类列表</span>
+                <span class="text-muted small fw-normal">共 {{ categories|length }} 个</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                    <tr><th>排序</th><th>分类名称</th><th>编码</th><th>药材数</th><th>备注</th><th class="text-end">操作</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for category in categories %}
+                        <tr>
+                            <td class="text-muted">{{ category.sort }}</td>
+                            <td class="fw-semibold">{{ category.name }}</td>
+                            <td><code>{{ category.code }}</code></td>
+                            <td>{{ category.herbs.count }}</td>
+                            <td class="text-muted">{{ category.remark|default:"—" }}</td>
+                            <td class="text-end text-nowrap">
+                                <a href="{% url 'herbs:category_edit' category.pk %}" class="btn btn-sm btn-outline-secondary">编辑</a>
+                                <form method="post" action="{% url 'herbs:category_delete' category.pk %}" class="d-inline"
+                                      data-confirm="确定删除分类「{{ category.name }}」吗？">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm btn-outline-danger">删除</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="6"><div class="empty-state"><i class="bi bi-tags"></i>暂无分类</div></td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% load static ui_extras %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}工作台{% endblock %} · {{ SITE_NAME }}</title>
+    <link href="{% static 'vendor/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="{% static 'vendor/bootstrap-icons.css' %}" rel="stylesheet">
+    <link href="{% static 'css/app.css' %}" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="brand">
+            <span class="brand-mark">本</span>
+            <div>
+                <div class="brand-title">本草库存</div>
+                <div class="brand-sub">中药材批次管理</div>
+            </div>
+        </div>
+        <nav class="nav-menu">
+            {% for group, items in menu_groups.items %}
+                <div class="nav-group">{{ group }}</div>
+                {% for menu in items %}
+                    <a class="nav-link {% if menu.url == '/' and current_path == '/' %}active{% elif menu.url != '/' and menu.url in current_path %}active{% endif %}"
+                       href="{{ menu.url }}">
+                        <i class="bi {{ menu.icon }}"></i><span>{{ menu.name }}</span>
+                    </a>
+                {% endfor %}
+            {% empty %}
+                <div class="text-muted small px-3 py-2">暂未分配菜单权限</div>
+            {% endfor %}
+        </nav>
+        <div class="sidebar-footer">
+            <div class="small text-muted">教学实践项目</div>
+            <div class="small text-muted">Django 5 · MySQL/SQLite</div>
+        </div>
+    </aside>
+
+    <div class="main">
+        <header class="topbar">
+            <div class="d-flex align-items-center gap-3">
+                <button class="btn btn-sm btn-light d-lg-none" id="sidebarToggle">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div>
+                    <h1 class="page-title">{% block page_title %}工作台{% endblock %}</h1>
+                    <div class="page-sub">{% block page_sub %}{% endblock %}</div>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-muted small d-none d-md-inline">
+                    <i class="bi bi-calendar3 me-1"></i>{% now "Y年m月d日" %}
+                </span>
+                <div class="dropdown">
+                    <button class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                        <span class="avatar">{{ user.display_name|slice:":1" }}</span>
+                        {{ user.display_name }}
+                        <span class="badge text-bg-light border ms-1">{{ user.role_name }}</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                        <li><a class="dropdown-item" href="{% url 'accounts:profile' %}">
+                            <i class="bi bi-person-gear me-2"></i>个人中心</a></li>
+                        {% if user.is_staff %}
+                        <li><a class="dropdown-item" href="/admin/" target="_blank">
+                            <i class="bi bi-sliders me-2"></i>Django 后台</a></li>
+                        {% endif %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="{% url 'accounts:logout' %}">
+                            <i class="bi bi-box-arrow-right me-2"></i>退出登录</a></li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+
+        <main class="content">
+            {% if messages %}
+                <div class="mb-3">
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer class="footer">
+            {{ SITE_NAME }} · 可追溯业务闭环演示 · Python {{ "3.13" }} / Django 5.2
+        </footer>
+    </div>
+</div>
+
+<script src="{% static 'vendor/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'js/app.js' %}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

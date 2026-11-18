@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load ui_extras %}
+{% block title %}库存查询{% endblock %}
+{% block page_title %}库存查询{% endblock %}
+{% block page_sub %}按药材、分类、库存状态与效期多条件查询{% endblock %}
+
+{% block content %}
+<div class="filter-bar">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label">关键词</label>
+            <input type="text" name="q" value="{{ keyword }}" class="form-control" placeholder="药材名称 / 编码 / 拼音">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">分类</label>
+            <select name="category" class="form-select">
+                <option value="">全部分类</option>
+                {% for c in categories %}
+                    <option value="{{ c.id }}" {% if category_id == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">库存状态</label>
+            <select name="stock" class="form-select">
+                <option value="">全部</option>
+                <option value="low" {% if stock_flag == "low" %}selected{% endif %}>低库存</option>
+                <option value="zero" {% if stock_flag == "zero" %}selected{% endif %}>缺货</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">效期</label>
+            <select name="expiry" class="form-select">
+                <option value="">全部</option>
+                <option value="30" {% if expiry_days == "30" %}selected{% endif %}>30 天内到期</option>
+                <option value="90" {% if expiry_days == "90" %}selected{% endif %}>90 天内到期</option>
+                <option value="180" {% if expiry_days == "180" %}selected{% endif %}>180 天内到期</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button class="btn btn-tcm"><i class="bi bi-search me-1"></i>查询</button>
+            <a href="{% url 'inventory:stock' %}" class="btn btn-outline-secondary">重置</a>
+            <div class="dropdown ms-auto">
+                <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">导出</button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'inventory:stock_export' %}?fmt=xlsx">Excel (.xlsx)</a></li>
+                    <li><a class="dropdown-item" href="{% url 'inventory:stock_export' %}?fmt=csv">CSV</a></li>
+                </ul>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="row g-2 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="stat-card py-3">
+            <div class="stat-label">查询结果</div>
+            <div class="stat-value fs-4">{{ total }} <small>种</small></div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card py-3">
+            <div class="stat-label">库存总金额</div>
+            <div class="stat-value fs-4">¥{{ total_value|money }}</div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 d-flex align-items-center">
+        <div class="text-muted small">
+            <i class="bi bi-info-circle me-1"></i>库存 = 所有「在库」批次剩余数量之和；出库自动按近效期优先扣减。
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+            <tr>
+                <th>药材编码</th><th>药材名称</th><th>分类</th><th>规格</th>
+                <th class="text-end">当前库存</th><th class="text-end">库存下限</th>
+                <th>库存状态</th><th class="text-end">参考单价</th><th class="text-end">库存金额</th>
+                <th class="text-end">操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for herb in page_obj %}
+                <tr>
+                    <td class="text-muted">{{ herb.code }}</td>
+                    <td><a href="{% url 'herbs:detail' herb.pk %}" class="text-decoration-none fw-semibold">{{ herb.name }}</a></td>
+                    <td>{{ herb.category.name }}</td>
+                    <td class="text-muted">{{ herb.spec|default:"—" }}</td>
+                    <td class="text-end fw-semibold">{{ herb.stock|floatformat:2 }} {{ herb.unit }}</td>
+                    <td class="text-end text-muted">{{ herb.min_stock|floatformat:2 }}</td>
+                    <td><span class="badge-soft {{ herb.stock_status_class }}">{{ herb.stock_status }}</span></td>
+                    <td class="text-end text-muted">¥{{ herb.price|money }}</td>
+                    <td class="text-end">¥{{ herb.stock|mul:herb.price|money }}</td>
+                    <td class="text-end">
+                        <a href="{% url 'inventory:batch_list' %}?herb={{ herb.pk }}" class="btn btn-sm btn-outline-secondary">批次</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="10"><div class="empty-state"><i class="bi bi-box"></i>无符合条件的库存记录</div></td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% include "includes/pagination.html" %}
+{% endblock %}

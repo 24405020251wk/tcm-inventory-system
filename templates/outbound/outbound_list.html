@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% load ui_extras %}
+{% block title %}领用出库{% endblock %}
+{% block page_title %}领用与出库管理{% endblock %}
+{% block page_sub %}领用申请、审核流转与出库追溯{% endblock %}
+
+{% block content %}
+<div class="filter-bar">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label">关键词</label>
+            <input type="text" name="q" value="{{ keyword }}" class="form-control" placeholder="单号 / 部门 / 用途">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">状态</label>
+            <select name="status" class="form-select">
+                <option value="">全部状态</option>
+                {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">开始日期</label>
+            <input type="date" name="start" value="{{ start }}" class="form-control">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">结束日期</label>
+            <input type="date" name="end" value="{{ end }}" class="form-control">
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button class="btn btn-tcm"><i class="bi bi-search me-1"></i>查询</button>
+            <a href="{% url 'outbound:list' %}" class="btn btn-outline-secondary">重置</a>
+            <div class="dropdown ms-auto">
+                <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">导出</button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'outbound:export' %}?fmt=xlsx">Excel (.xlsx)</a></li>
+                    <li><a class="dropdown-item" href="{% url 'outbound:export' %}?fmt=csv">CSV</a></li>
+                </ul>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="text-muted small">共 {{ total }} 张出库单</div>
+    <a href="{% url 'outbound:create' %}" class="btn btn-sm btn-tcm"><i class="bi bi-plus-lg me-1"></i>新建领用单</a>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+            <tr>
+                <th>出库单号</th><th>领用部门</th><th>用途</th><th>申请人</th><th>申请日期</th>
+                <th class="text-end">数量</th><th>审核人</th><th>状态</th><th class="text-end">操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for order in page_obj %}
+                <tr>
+                    <td><a href="{% url 'outbound:detail' order.pk %}" class="text-decoration-none fw-semibold">{{ order.order_no }}</a></td>
+                    <td>{{ order.department }}</td>
+                    <td class="text-muted">{{ order.purpose|default:"—" }}</td>
+                    <td class="text-muted">{{ order.applicant.display_name }}</td>
+                    <td class="text-muted">{{ order.apply_date|date:"Y-m-d" }}</td>
+                    <td class="text-end">{{ order.total_quantity|floatformat:2 }}</td>
+                    <td class="text-muted">{{ order.approver.display_name|default:"—" }}</td>
+                    <td><span class="badge-soft {{ order.status|status_badge }}">{{ order.get_status_display }}</span></td>
+                    <td class="text-end text-nowrap">
+                        <a href="{% url 'outbound:detail' order.pk %}" class="btn btn-sm btn-outline-secondary">详情</a>
+                        {% if order.status == "draft" or order.status == "rejected" %}
+                            <a href="{% url 'outbound:edit' order.pk %}" class="btn btn-sm btn-outline-secondary">编辑</a>
+                            <form method="post" action="{% url 'outbound:submit' order.pk %}" class="d-inline"
+                                  data-confirm="提交后将进入审核流程，是否继续？">
+                                {% csrf_token %}
+                                <button class="btn btn-sm btn-tcm">提交审核</button>
+                            </form>
+                        {% elif order.status == "pending" and "outbound.approve" in menu_codes %}
+                            <a href="{% url 'outbound:detail' order.pk %}" class="btn btn-sm btn-tcm">去审核</a>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="9"><div class="empty-state"><i class="bi bi-outbox"></i>暂无出库单</div></td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% include "includes/pagination.html" %}
+{% endblock %}

@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% load static ui_extras %}
+{% block title %}工作台{% endblock %}
+{% block page_title %}工作台{% endblock %}
+{% block page_sub %}库存、批次与业务流转概览{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-3">
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">药材品种</div>
+            <div class="stat-value">{{ herb_count }} <small>种</small></div>
+            <div class="stat-foot">在库批次 {{ batch_count }} 个</div>
+            <i class="bi bi-journal-medical stat-icon"></i>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">库存总量</div>
+            <div class="stat-value">{{ total_stock|floatformat:1 }} <small>kg</small></div>
+            <div class="stat-foot">库存金额约 ¥{{ total_value|money }}</div>
+            <i class="bi bi-box-seam stat-icon"></i>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">库存预警</div>
+            <div class="stat-value {% if low_stock_count %}text-danger{% endif %}">{{ low_stock_count }} <small>种</small></div>
+            <div class="stat-foot">低于库存下限，需及时补货</div>
+            <i class="bi bi-exclamation-triangle stat-icon"></i>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">待办事项</div>
+            <div class="stat-value">{{ pending_count }} <small>单待审</small></div>
+            <div class="stat-foot">近 30 天到期批次 {{ expiring_count }} 个</div>
+            <i class="bi bi-clipboard-check stat-icon"></i>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between">
+                <span>分类库存占比</span>
+                <span class="text-muted small fw-normal">单位：kg</span>
+            </div>
+            <div class="card-body">
+                <div id="categoryChart" style="height:270px;"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between">
+                <span>库存 Top 8</span>
+                <a href="{% url 'inventory:stock' %}" class="small text-decoration-none">查看全部</a>
+            </div>
+            <div class="card-body">
+                <div id="topChart" style="height:270px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between">
+                <span>低库存提醒</span>
+                <a href="{% url 'inventory:stock' %}?stock=low" class="small text-decoration-none">全部</a>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                    {% for herb in low_stock %}
+                        <tr>
+                            <td><a href="{% url 'herbs:detail' herb.pk %}" class="text-decoration-none">{{ herb.name }}</a></td>
+                            <td class="text-end text-danger fw-semibold">{{ herb.stock|floatformat:2 }}{{ herb.unit }}</td>
+                            <td class="text-muted small text-end">下限 {{ herb.min_stock|floatformat:0 }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td><div class="empty-state py-4"><i class="bi bi-check2-circle"></i>库存充足，暂无预警</div></td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between">
+                <span>最近入库</span>
+                <a href="{% url 'inbound:list' %}" class="small text-decoration-none">全部</a>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                    {% for order in recent_inbound %}
+                        <tr>
+                            <td><a href="{% url 'inbound:detail' order.pk %}" class="text-decoration-none">{{ order.order_no }}</a>
+                                <div class="text-muted small">{{ order.supplier }}</div>
+                            </td>
+                            <td class="text-end">
+                                <span class="badge-soft {{ order.status|status_badge }}">{{ order.get_status_display }}</span>
+                                <div class="text-muted small mt-1">{{ order.inbound_date|date:"m-d" }}</div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td><div class="empty-state py-4"><i class="bi bi-inbox"></i>暂无入库记录</div></td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between">
+                <span>最近出库</span>
+                <a href="{% url 'outbound:list' %}" class="small text-decoration-none">全部</a>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                    {% for order in recent_outbound %}
+                        <tr>
+                            <td><a href="{% url 'outbound:detail' order.pk %}" class="text-decoration-none">{{ order.order_no }}</a>
+                                <div class="text-muted small">{{ order.department }}</div>
+                            </td>
+                            <td class="text-end">
+                                <span class="badge-soft {{ order.status|status_badge }}">{{ order.get_status_display }}</span>
+                                <div class="text-muted small mt-1">{{ order.apply_date|date:"m-d" }}</div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td><div class="empty-state py-4"><i class="bi bi-outbox"></i>暂无出库记录</div></td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header d-flex justify-content-between">
+        <span>操作动态</span>
+        <a href="{% url 'inventory:logs' %}" class="small text-decoration-none">全部日志</a>
+    </div>
+    <div class="card-body">
+        <ul class="timeline mb-0">
+            {% for log in recent_logs %}
+                <li>
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <span class="fw-semibold">{{ log.username }}</span>
+                            <span class="text-muted ms-1">{{ log.action }}</span>
+                            {% if log.target %}<span class="text-muted">· {{ log.target }}</span>{% endif %}
+                        </div>
+                        <span class="text-muted small">{{ log.created_at|date:"m-d H:i" }}</span>
+                    </div>
+                </li>
+            {% empty %}
+                <li class="text-muted small">暂无操作记录</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+{{ chart|json_script:"dashboard-chart" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/echarts.min.js' %}"></script>
+<script>
+const chartData = JSON.parse(document.getElementById("dashboard-chart").textContent);
+const greenPalette = ["#2f6b4f", "#4f8f6d", "#7db093", "#b5893f", "#d8b877", "#8fa9b8", "#bfa3c9", "#9fb98a"];
+
+const categoryChart = echarts.init(document.getElementById("categoryChart"));
+categoryChart.setOption({
+    color: greenPalette,
+    tooltip: { trigger: "item", formatter: "{b}<br/>{c} kg（{d}%）" },
+    legend: { bottom: 0, icon: "circle", itemWidth: 8, itemHeight: 8, textStyle: { fontSize: 11 } },
+    series: [{
+        type: "pie",
+        radius: ["42%", "68%"],
+        center: ["50%", "44%"],
+        avoidLabelOverlap: true,
+        itemStyle: { borderColor: "#fff", borderWidth: 2 },
+        label: { show: false },
+        data: chartData.category.labels.map((label, i) => ({ name: label, value: chartData.category.values[i] }))
+    }]
+});
+
+const topChart = echarts.init(document.getElementById("topChart"));
+topChart.setOption({
+    grid: { left: 10, right: 24, top: 20, bottom: 10, containLabel: true },
+    tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
+    xAxis: { type: "value", splitLine: { lineStyle: { color: "#eef3ef" } }, axisLabel: { color: "#8a9991" } },
+    yAxis: {
+        type: "category",
+        data: chartData.top.labels.slice().reverse(),
+        axisLine: { show: false }, axisTick: { show: false },
+        axisLabel: { color: "#4b5a52" }
+    },
+    series: [{
+        type: "bar",
+        data: chartData.top.values.slice().reverse(),
+        barWidth: 14,
+        itemStyle: { color: "#2f6b4f", borderRadius: [0, 6, 6, 0] },
+        label: { show: true, position: "right", color: "#6b7a72", fontSize: 11 }
+    }]
+});
+
+window.addEventListener("resize", () => {
+    categoryChart.resize();
+    topChart.resize();
+});
+</script>
+{% endblock %}

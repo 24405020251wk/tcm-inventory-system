@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}{% if instance %}编辑角色{% else %}新增角色{% endif %}{% endblock %}
+{% block page_title %}{% if instance %}编辑角色{% else %}新增角色{% endif %}{% endblock %}
+{% block page_sub %}勾选该角色可访问的功能菜单{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger py-2">{{ form.non_field_errors|join:" " }}</div>
+        {% endif %}
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label required">角色名称</label>
+                {{ form.name }}
+                {% if form.name.errors %}<ul class="errorlist"><li>{{ form.name.errors.0 }}</li></ul>{% endif %}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label required">角色编码</label>
+                {{ form.code }}
+                <div class="form-text">英文小写，如 keeper、approver</div>
+                {% if form.code.errors %}<ul class="errorlist"><li>{{ form.code.errors.0 }}</li></ul>{% endif %}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">角色说明</label>
+                {{ form.description }}
+            </div>
+        </div>
+
+        <div class="form-check form-switch mt-3">
+            {{ form.is_active }}
+            <label class="form-check-label small" for="{{ form.is_active.id_for_label }}">启用该角色</label>
+        </div>
+
+        <hr class="my-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="section-title mb-0">菜单权限</div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAll(true)">全选</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAll(false)">清空</button>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            {% for group, menus in menus_by_group.items %}
+                <div class="col-md-6">
+                    <div class="border rounded-3 p-3 h-100">
+                        <div class="fw-semibold mb-2 text-success-emphasis">{{ group }}</div>
+                        {% for menu in menus %}
+                            <div class="form-check">
+                                <input class="form-check-input menu-checkbox" type="checkbox" name="menus"
+                                       value="{{ menu.id }}" id="menu_{{ menu.id }}"
+                                       {% if menu.id in selected_ids %}checked{% endif %}>
+                                <label class="form-check-label" for="menu_{{ menu.id }}">
+                                    {{ menu.name }}
+                                    <span class="text-muted small">（{{ menu.code }}）</span>
+                                </label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+            <button class="btn btn-tcm"><i class="bi bi-check2 me-1"></i>保存权限</button>
+            <a href="{% url 'accounts:role_list' %}" class="btn btn-outline-secondary">返回</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleAll(checked) {
+    document.querySelectorAll(".menu-checkbox").forEach((box) => { box.checked = checked; });
+}
+</script>
+{% endblock %}

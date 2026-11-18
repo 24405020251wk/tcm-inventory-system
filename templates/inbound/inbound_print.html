@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>入库单 {{ order.order_no }}</title>
+<style>
+    @page { size: A4; margin: 14mm 12mm; }
+    * { box-sizing: border-box; }
+    body {
+        font-family: "Microsoft YaHei", "PingFang SC", "SimSun", sans-serif;
+        font-size: 12pt; color: #1f2937; margin: 0; padding: 16px;
+        background: #f5f6f8;
+    }
+    .sheet {
+        background: #fff; width: 186mm; margin: 0 auto; padding: 10mm 8mm;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, .12);
+    }
+    h1 { font-size: 18pt; text-align: center; margin: 0 0 4px; letter-spacing: 4px; }
+    .sub { text-align: center; font-size: 9.5pt; color: #6b7280; margin-bottom: 14px; }
+    .meta { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+    .meta td { padding: 4px 6px; font-size: 10.5pt; }
+    .meta td.label { color: #6b7280; width: 62px; white-space: nowrap; }
+    table.items { width: 100%; border-collapse: collapse; }
+    table.items th, table.items td {
+        border: 1px solid #9ca3af; padding: 5px 6px; font-size: 10pt;
+    }
+    table.items th { background: #f3f4f6; font-weight: 600; }
+    table.items tfoot td { background: #fafafa; font-weight: 600; }
+    .right { text-align: right; }
+    .center { text-align: center; }
+    .foot { margin-top: 12px; font-size: 9.5pt; color: #4b5563; line-height: 1.7; }
+    .sign { margin-top: 26px; display: flex; justify-content: space-between; font-size: 10.5pt; }
+    .sign div { width: 30%; border-top: 1px solid #9ca3af; padding-top: 6px; text-align: center; color: #4b5563; }
+    .toolbar {
+        width: 186mm; margin: 0 auto 12px; display: flex; gap: 8px; justify-content: flex-end;
+    }
+    .toolbar button, .toolbar a {
+        font-size: 10pt; padding: 7px 16px; border-radius: 6px; cursor: pointer;
+        border: 1px solid #0f766e; background: #0f766e; color: #fff; text-decoration: none;
+        font-family: inherit;
+    }
+    .toolbar a { background: #fff; color: #0f766e; }
+    @media print {
+        body { background: #fff; padding: 0; }
+        .sheet { box-shadow: none; width: auto; padding: 0; }
+        .toolbar { display: none; }
+    }
+</style>
+</head>
+<body>
+<div class="toolbar">
+    <button onclick="window.print()">打印 / 另存为 PDF</button>
+    <a href="{% url 'inbound:detail' order.pk %}">返回单据</a>
+</div>
+
+<div class="sheet">
+    <h1>中药材入库单</h1>
+    <div class="sub">{{ order.get_status_display }} · 单号 {{ order.order_no }}</div>
+
+    <table class="meta">
+        <tr>
+            <td class="label">供应商</td><td>{{ order.supplier }}</td>
+            <td class="label">入库日期</td><td>{{ order.inbound_date|date:"Y-m-d" }}</td>
+            <td class="label">经办人</td><td>{{ order.operator.display_name }}</td>
+        </tr>
+        <tr>
+            <td class="label">确认时间</td>
+            <td>{{ order.confirmed_at|date:"Y-m-d H:i"|default:"—" }}</td>
+            <td class="label">明细条数</td><td>{{ order.items.count }}</td>
+            <td class="label">总金额</td><td>￥{{ order.total_amount|floatformat:2 }}</td>
+        </tr>
+        <tr>
+            <td class="label">备注</td>
+            <td colspan="5">{{ order.remark|default:"—" }}</td>
+        </tr>
+    </table>
+
+    <table class="items">
+        <thead>
+        <tr>
+            <th class="center" style="width:34px">序号</th>
+            <th>药材编码</th>
+            <th>药材名称</th>
+            <th>规格</th>
+            <th class="center">批次号</th>
+            <th class="center">生产日期</th>
+            <th class="center">有效期至</th>
+            <th class="right">数量</th>
+            <th class="center">单位</th>
+            <th class="right">单价</th>
+            <th class="right">金额</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for item in order.items.all %}
+            <tr>
+                <td class="center">{{ forloop.counter }}</td>
+                <td>{{ item.herb.code }}</td>
+                <td>{{ item.herb.name }}</td>
+                <td>{{ item.herb.spec|default:"—" }}</td>
+                <td class="center">{{ item.batch_no }}</td>
+                <td class="center">{{ item.production_date|date:"Y-m-d"|default:"—" }}</td>
+                <td class="center">{{ item.expiry_date|date:"Y-m-d"|default:"—" }}</td>
+                <td class="right">{{ item.quantity|floatformat:2 }}</td>
+                <td class="center">{{ item.herb.unit }}</td>
+                <td class="right">{{ item.unit_price|floatformat:2 }}</td>
+                <td class="right">{{ item.amount|floatformat:2 }}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="11" class="center">无明细</td></tr>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+        <tr>
+            <td colspan="10" class="right">合计金额</td>
+            <td class="right">￥{{ order.total_amount|floatformat:2 }}</td>
+        </tr>
+        </tfoot>
+    </table>
+
+    <div class="foot">
+        <div>打印时间：{% now "Y-m-d H:i" %}</div>
+    </div>
+
+    <div class="sign">
+        <div>供货方签字</div>
+        <div>仓管员签字</div>
+        <div>复核人签字</div>
+    </div>
+</div>
+</body>
+</html>

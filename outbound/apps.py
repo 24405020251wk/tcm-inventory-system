@@ -1,0 +1,7 @@
+from django.apps import AppConfig
+
+
+class OutboundConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "outbound"
+    verbose_name = "领用与出库"

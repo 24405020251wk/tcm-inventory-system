@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load ui_extras %}
+{% block title %}{% if instance %}编辑入库单{% else %}新建入库单{% endif %}{% endblock %}
+{% block page_title %}{% if instance %}编辑入库单{% else %}新建入库单{% endif %}{% endblock %}
+{% block page_sub %}保存草稿后确认入库，系统将按明细自动生成批次库存{% endblock %}
+
+{% block content %}
+<form method="post" novalidate id="inboundForm">
+    {% csrf_token %}
+    <div class="form-card mb-3">
+        <div class="section-title">基本信息</div>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label required">供应商</label>
+                {{ form.supplier }}
+                {% if form.supplier.errors %}<ul class="errorlist"><li>{{ form.supplier.errors.0 }}</li></ul>{% endif %}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label required">入库日期</label>
+                {{ form.inbound_date }}
+                {% if form.inbound_date.errors %}<ul class="errorlist"><li>{{ form.inbound_date.errors.0 }}</li></ul>{% endif %}
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">备注</label>
+                {{ form.remark }}
+            </div>
+        </div>
+    </div>
+
+    <div class="form-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="section-title mb-0">入库明细</div>
+            <button type="button" class="btn btn-sm btn-outline-tcm" onclick="addFormsetRow('items')">
+                <i class="bi bi-plus-lg me-1"></i>添加一行
+            </button>
+        </div>
+
+        <div class="row g-2 mb-2 d-none d-md-flex text-muted small">
+            <div class="col-md-3">药材 *</div>
+            <div class="col-md-2">批次号（留空自动生成）</div>
+            <div class="col-md-2">生产日期</div>
+            <div class="col-md-2">有效期至</div>
+            <div class="col-md-1">数量 *</div>
+            <div class="col-md-1">单价</div>
+            <div class="col-md-1"></div>
+        </div>
+
+        {{ formset.management_form }}
+        {% if formset.non_form_errors %}
+            <div class="alert alert-danger py-2">{{ formset.non_form_errors|join:" " }}</div>
+        {% endif %}
+
+        <div id="items-rows">
+            {% for item_form in formset %}
+                {% include "inbound/_item_row.html" with form=item_form %}
+            {% endfor %}
+        </div>
+
+        <template id="items-empty-template">
+            {% include "inbound/_item_row.html" with form=formset.empty_form %}
+        </template>
+    </div>
+
+    <div class="d-flex gap-2 mt-3">
+        <button type="submit" class="btn btn-tcm"><i class="bi bi-save me-1"></i>保存草稿</button>
+        <a href="{% if instance %}{% url 'inbound:detail' instance.pk %}{% else %}{% url 'inbound:list' %}{% endif %}"
+           class="btn btn-outline-secondary">取消</a>
+    </div>
+</form>
+
+{{ herb_prices|json_script:"herb-prices" }}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.HERB_PRICES = JSON.parse(document.getElementById("herb-prices").textContent);
+</script>
+{% endblock %}

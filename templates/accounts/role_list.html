@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}角色权限{% endblock %}
+{% block page_title %}角色与权限{% endblock %}
+{% block page_sub %}角色决定用户可见的菜单与可执行的操作{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-end mb-3">
+    <a href="{% url 'accounts:role_create' %}" class="btn btn-tcm"><i class="bi bi-plus-lg me-1"></i>新增角色</a>
+</div>
+
+<div class="row g-3">
+    {% for role in roles %}
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="fw-semibold">{{ role.name }}</span>
+                        <code class="ms-2 small text-muted">{{ role.code }}</code>
+                        {% if not role.is_active %}<span class="badge-soft secondary ms-2">停用</span>{% endif %}
+                    </div>
+                    <div class="d-flex gap-1">
+                        <a href="{% url 'accounts:role_edit' role.pk %}" class="btn btn-sm btn-outline-secondary">编辑</a>
+                        <form method="post" action="{% url 'accounts:role_delete' role.pk %}" data-confirm="确定删除角色「{{ role.name }}」吗？">
+                            {% csrf_token %}
+                            <button class="btn btn-sm btn-outline-danger">删除</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="text-muted small mb-2">{{ role.description|default:"暂无角色说明" }}</div>
+                    <div class="mb-2 small">
+                        <i class="bi bi-people me-1 text-muted"></i>用户数：{{ role.users.count }}
+                        <span class="mx-2 text-muted">|</span>
+                        <i class="bi bi-shield-check me-1 text-muted"></i>菜单数：{{ role.menus.count }}
+                    </div>
+                    <div class="d-flex flex-wrap gap-1">
+                        {% for menu in role.menus.all %}
+                            <span class="badge-soft success">{{ menu.name }}</span>
+                        {% empty %}
+                            <span class="text-muted small">未分配任何菜单权限</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="col-12"><div class="empty-state"><i class="bi bi-shield-lock"></i>暂无角色</div></div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load ui_extras %}
+{% block title %}用户管理{% endblock %}
+{% block page_title %}用户管理{% endblock %}
+{% block page_sub %}维护系统账号、分配角色、重置密码{% endblock %}
+
+{% block content %}
+<div class="filter-bar">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label">关键词</label>
+            <input type="text" name="q" value="{{ keyword }}" class="form-control" placeholder="账号 / 姓名 / 手机号">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">角色</label>
+            <select name="role" class="form-select">
+                <option value="">全部角色</option>
+                {% for role in roles %}
+                    <option value="{{ role.id }}" {% if role_id == role.id|stringformat:"s" %}selected{% endif %}>{{ role.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-5 d-flex gap-2">
+            <button class="btn btn-tcm"><i class="bi bi-search me-1"></i>查询</button>
+            <a href="{% url 'accounts:user_list' %}" class="btn btn-outline-secondary">重置</a>
+            <a href="{% url 'accounts:user_create' %}" class="btn btn-outline-tcm ms-auto">
+                <i class="bi bi-plus-lg me-1"></i>新增用户
+            </a>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+            <tr>
+                <th style="width:60px">#</th>
+                <th>账号</th>
+                <th>姓名</th>
+                <th>角色</th>
+                <th>部门</th>
+                <th>手机号</th>
+                <th>最近登录</th>
+                <th>状态</th>
+                <th class="text-end">操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for u in page_obj %}
+                <tr>
+                    <td class="text-muted">{{ forloop.counter0|add:page_obj.start_index }}</td>
+                    <td class="fw-semibold">{{ u.username }}
+                        {% if u.is_superuser %}<span class="badge text-bg-warning ms-1">超管</span>{% endif %}
+                    </td>
+                    <td>{{ u.display_name }}</td>
+                    <td>
+                        <span class="badge-soft {% if u.is_superuser %}warning{% else %}success{% endif %}">{{ u.role_name }}</span>
+                    </td>
+                    <td class="text-muted">{{ u.department|default:"—" }}</td>
+                    <td class="text-muted">{{ u.phone|default:"—" }}</td>
+                    <td class="text-muted small">{{ u.last_login|date:"Y-m-d H:i"|default:"从未登录" }}</td>
+                    <td>
+                        {% if u.is_active %}<span class="badge-soft success">启用</span>
+                        {% else %}<span class="badge-soft secondary">停用</span>{% endif %}
+                    </td>
+                    <td class="text-end">
+                        <a href="{% url 'accounts:user_edit' u.pk %}" class="btn btn-sm btn-outline-secondary">编辑</a>
+                        <form method="post" action="{% url 'accounts:user_reset_password' u.pk %}" class="d-inline"
+                              data-confirm="确定将 {{ u.username }} 的密码重置为 Tcm@123456 吗？">
+                            {% csrf_token %}
+                            <button class="btn btn-sm btn-outline-secondary">重置密码</button>
+                        </form>
+                        {% if not u.is_superuser and u != request.user %}
+                        <form method="post" action="{% url 'accounts:user_toggle' u.pk %}" class="d-inline"
+                              data-confirm="确定{{ u.is_active|yesno:'停用,启用' }}账号 {{ u.username }} 吗？">
+                            {% csrf_token %}
+                            <button class="btn btn-sm {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+                                {{ u.is_active|yesno:"停用,启用" }}
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="9"><div class="empty-state"><i class="bi bi-people"></i>暂无用户数据</div></td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% include "includes/pagination.html" %}
+{% endblock %}

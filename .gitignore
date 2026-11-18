@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.sqlite3
+db.sqlite3
+
+# 虚拟环境
+.venv/
+venv/
+env/
+
+# Django
+staticfiles/
+media/
+*.log
+
+# IDE
+.idea/
+.vscode/
+.DS_Store
+
+# 后台服务日志
+logs/
+
+# 文档提取临时目录
+docs_extract/

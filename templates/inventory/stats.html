@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% load static ui_extras %}
+{% block title %}统计分析{% endblock %}
+{% block page_title %}库存统计分析{% endblock %}
+{% block page_sub %}库存结构、出入库趋势与预警分析{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-3">
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">药材品种</div>
+            <div class="stat-value">{{ summary.herb_count }} <small>种</small></div>
+            <i class="bi bi-journal-medical stat-icon"></i>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">库存总量</div>
+            <div class="stat-value">{{ summary.total_stock|floatformat:1 }} <small>kg</small></div>
+            <i class="bi bi-box-seam stat-icon"></i>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">库存金额</div>
+            <div class="stat-value">¥{{ summary.total_value|money }}</div>
+            <i class="bi bi-cash-coin stat-icon"></i>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">预警品种</div>
+            <div class="stat-value text-danger">{{ summary.low_count }} <small>种低库存</small></div>
+            <div class="stat-foot">近效期批次 {{ summary.expiring_count }} 个</div>
+            <i class="bi bi-exclamation-triangle stat-icon"></i>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header">分类库存结构</div>
+            <div class="card-body"><div id="catChart" style="height:300px;"></div></div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header">库存 Top 10</div>
+            <div class="card-body"><div id="topChart" style="height:300px;"></div></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header">近 6 个月出入库趋势</div>
+            <div class="card-body"><div id="trendChart" style="height:290px;"></div></div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between">
+                <span>低库存品种</span>
+                <a href="{% url 'inventory:stock' %}?stock=low" class="small text-decoration-none">查看全部</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>药材</th><th class="text-end">库存</th><th class="text-end">下限</th></tr></thead>
+                    <tbody>
+                    {% for herb in low_stock %}
+                        <tr>
+                            <td><a href="{% url 'herbs:detail' herb.pk %}" class="text-decoration-none">{{ herb.name }}</a></td>
+                            <td class="text-end text-danger fw-semibold">{{ herb.stock|floatformat:2 }}</td>
+                            <td class="text-end text-muted">{{ herb.min_stock|floatformat:0 }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="3" class="text-center text-muted py-4">库存充足</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between">
+        <span>近效期批次（90 天内）</span>
+        <a href="{% url 'inventory:batch_list' %}?expiring=90" class="small text-decoration-none">查看全部</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead><tr><th>批次号</th><th>药材</th><th>有效期至</th><th class="text-end">剩余数量</th><th>供应商</th></tr></thead>
+            <tbody>
+            {% for batch in expiring_batches %}
+                <tr>
+                    <td>{{ batch.batch_no }}</td>
+                    <td>{{ batch.herb.name }}</td>
+                    <td class="text-danger">{{ batch.expiry_date|date:"Y-m-d" }}</td>
+                    <td class="text-end">{{ batch.remaining_quantity|floatformat:2 }} {{ batch.herb.unit }}</td>
+                    <td class="text-muted">{{ batch.supplier|default:"—" }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-4">近 90 天无到期批次</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{{ data|json_script:"stats-data" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/echarts.min.js' %}"></script>
+<script>
+const stats = JSON.parse(document.getElementById("stats-data").textContent);
+const palette = ["#2f6b4f", "#4f8f6d", "#7db093", "#b5893f", "#d8b877", "#8fa9b8", "#bfa3c9", "#9fb98a"];
+const axisStyle = { axisLine: { lineStyle: { color: "#dbe4de" } }, axisLabel: { color: "#7a8a81" } };
+
+const cat = echarts.init(document.getElementById("catChart"));
+cat.setOption({
+    color: palette,
+    tooltip: { trigger: "item", formatter: "{b}<br/>{c} kg（{d}%）" },
+    legend: { bottom: 0, icon: "circle", itemWidth: 8, itemHeight: 8, textStyle: { fontSize: 11 } },
+    series: [{
+        type: "pie", radius: ["40%", "66%"], center: ["50%", "44%"],
+        itemStyle: { borderColor: "#fff", borderWidth: 2 }, label: { show: false },
+        data: stats.category.labels.map((l, i) => ({ name: l, value: stats.category.values[i] }))
+    }]
+});
+
+const top = echarts.init(document.getElementById("topChart"));
+top.setOption({
+    grid: { left: 10, right: 30, top: 16, bottom: 10, containLabel: true },
+    tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
+    xAxis: { type: "value", splitLine: { lineStyle: { color: "#eef3ef" } }, axisLabel: { color: "#8a9991" } },
+    yAxis: { type: "category", data: stats.top.labels.slice().reverse(), ...axisStyle,
+             axisLine: { show: false }, axisTick: { show: false } },
+    series: [{ type: "bar", data: stats.top.values.slice().reverse(), barWidth: 14,
+               itemStyle: { color: "#2f6b4f", borderRadius: [0, 6, 6, 0] },
+               label: { show: true, position: "right", color: "#6b7a72", fontSize: 11 } }]
+});
+
+const trend = echarts.init(document.getElementById("trendChart"));
+trend.setOption({
+    color: ["#2f6b4f", "#b5893f"],
+    tooltip: { trigger: "axis" },
+    legend: { data: ["入库", "出库"], right: 0, top: 0, icon: "roundRect", itemWidth: 10, itemHeight: 10 },
+    grid: { left: 10, right: 20, top: 40, bottom: 10, containLabel: true },
+    xAxis: { type: "category", data: stats.trend.labels, boundaryGap: false, ...axisStyle },
+    yAxis: { type: "value", splitLine: { lineStyle: { color: "#eef3ef" } }, axisLabel: { color: "#8a9991" } },
+    series: [
+        { name: "入库", type: "line", smooth: true, symbolSize: 6, data: stats.trend.in,
+          areaStyle: { color: "rgba(47,107,79,.10)" } },
+        { name: "出库", type: "line", smooth: true, symbolSize: 6, data: stats.trend.out,
+          areaStyle: { color: "rgba(181,137,63,.10)" } }
+    ]
+});
+
+window.addEventListener("resize", () => { cat.resize(); top.resize(); trend.resize(); });
+</script>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>登录 · 中药材库存与批次管理系统</title>
+    <link href="{% static 'vendor/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="{% static 'vendor/bootstrap-icons.css' %}" rel="stylesheet">
+    <link href="{% static 'css/app.css' %}" rel="stylesheet">
+</head>
+<body>
+<div class="auth-page">
+    <section class="auth-visual">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-5">
+                <span class="brand-mark">本</span>
+                <span class="fw-bold">本草 · 中药材库存与批次管理</span>
+            </div>
+            <h1>药材有批次<br>流转有痕迹</h1>
+            <p class="mt-3 mb-0">
+                面向中药房与制剂室的轻量级库存系统，覆盖药材档案、入库批次、<br>
+                领用出库、库存统计的完整业务闭环。
+            </p>
+            <div class="mt-4">
+                <div class="auth-feature"><i class="bi bi-check2-circle"></i><span>批次级追溯：每一克药材都能查到来源与去向</span></div>
+                <div class="auth-feature"><i class="bi bi-check2-circle"></i><span>角色权限：菜单级授权，操作全程留痕</span></div>
+                <div class="auth-feature"><i class="bi bi-check2-circle"></i><span>库存预警：低库存、近效期自动提醒</span></div>
+            </div>
+        </div>
+        <div class="small" style="opacity:.6">Python · Django · MySQL · Bootstrap · ECharts</div>
+    </section>
+
+    <section class="auth-form-wrap">
+        <div class="auth-form">
+            <h2>欢迎登录</h2>
+            <p class="text-muted mb-4">请输入账号与密码进入系统</p>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags|default:'info' }} py-2">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger py-2">{{ form.non_field_errors|join:" " }}</div>
+            {% endif %}
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label required" for="{{ form.username.id_for_label }}">账号</label>
+                    {{ form.username }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label required" for="{{ form.password.id_for_label }}">密码</label>
+                    {{ form.password }}
+                </div>
+                <input type="hidden" name="next" value="{{ request.GET.next }}">
+                <button type="submit" class="btn btn-tcm w-100 py-2 mt-1">登 录</button>
+            </form>
+
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <span class="text-muted small">还没有账号？<a href="{% url 'accounts:register' %}" class="text-decoration-none">立即注册</a></span>
+                <span class="text-muted small">教学演示系统</span>
+            </div>
+
+            <div class="demo-accounts mt-4">
+                <div class="fw-semibold mb-1 text-dark">演示账号</div>
+                管理员 admin / admin123 · 仓管员 keeper / keeper123<br>
+                审核员 approver / approve123 · 普通员工 staff / staff123
+            </div>
+        </div>
+    </section>
+</div>
+</body>
+</html>

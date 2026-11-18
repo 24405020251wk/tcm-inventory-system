@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% load ui_extras %}
+{% block title %}药材档案{% endblock %}
+{% block page_title %}中药材档案{% endblock %}
+{% block page_sub %}维护药材基础信息、规格与库存下限{% endblock %}
+
+{% block content %}
+<div class="filter-bar">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label">关键词</label>
+            <input type="text" name="q" value="{{ filters.keyword }}" class="form-control"
+                   placeholder="名称 / 编码 / 拼音 / 产地">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">分类</label>
+            <select name="category" class="form-select">
+                <option value="">全部分类</option>
+                {% for c in categories %}
+                    <option value="{{ c.id }}" {% if filters.category_id == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">库存状态</label>
+            <select name="stock" class="form-select">
+                <option value="">全部</option>
+                <option value="low" {% if filters.stock_flag == "low" %}selected{% endif %}>低库存</option>
+                <option value="zero" {% if filters.stock_flag == "zero" %}selected{% endif %}>缺货</option>
+                <option value="enough" {% if filters.stock_flag == "enough" %}selected{% endif %}>库存充足</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">排序</label>
+            <select name="sort" class="form-select">
+                <option value="code" {% if filters.sort == "code" %}selected{% endif %}>编码升序</option>
+                <option value="name" {% if filters.sort == "name" %}selected{% endif %}>名称升序</option>
+                <option value="-stock" {% if filters.sort == "-stock" %}selected{% endif %}>库存从高到低</option>
+                <option value="stock" {% if filters.sort == "stock" %}selected{% endif %}>库存从低到高</option>
+                <option value="created" {% if filters.sort == "created" %}selected{% endif %}>最近新增</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button class="btn btn-tcm"><i class="bi bi-search me-1"></i>查询</button>
+            <a href="{% url 'herbs:list' %}" class="btn btn-outline-secondary">重置</a>
+            <div class="ms-auto d-flex gap-2">
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                        <i class="bi bi-download me-1"></i>导出
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'herbs:export' %}?fmt=xlsx&{{ querystring }}">Excel (.xlsx)</a></li>
+                        <li><a class="dropdown-item" href="{% url 'herbs:export' %}?fmt=csv&{{ querystring }}">CSV</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="text-muted small">共 {{ total }} 种药材</div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'herbs:category_list' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-tags me-1"></i>分类管理
+        </a>
+        <a href="{% url 'herbs:create' %}" class="btn btn-sm btn-tcm">
+            <i class="bi bi-plus-lg me-1"></i>新增药材
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+            <tr>
+                <th>编码</th>
+                <th>药材名称</th>
+                <th>分类</th>
+                <th>规格 / 单位</th>
+                <th>产地</th>
+                <th class="text-end">当前库存</th>
+                <th class="text-end">库存下限</th>
+                <th>库存状态</th>
+                <th>档案状态</th>
+                <th class="text-end">操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for herb in page_obj %}
+                <tr>
+                    <td class="text-muted">{{ herb.code }}</td>
+                    <td>
+                        <a href="{% url 'herbs:detail' herb.pk %}" class="fw-semibold text-decoration-none text-dark">{{ herb.name }}</a>
+                        {% if herb.pinyin %}<div class="text-muted small">{{ herb.pinyin }}</div>{% endif %}
+                    </td>
+                    <td>{{ herb.category.name }}</td>
+                    <td class="text-muted">{{ herb.spec|default:"—" }} / {{ herb.unit }}</td>
+                    <td class="text-muted">{{ herb.origin|default:"—" }}</td>
+                    <td class="text-end fw-semibold">{{ herb.stock|floatformat:2 }}</td>
+                    <td class="text-end text-muted">{{ herb.min_stock|floatformat:0 }}</td>
+                    <td><span class="badge-soft {{ herb.stock_status_class }}">{{ herb.stock_status }}</span></td>
+                    <td>
+                        {% if herb.status == "active" %}<span class="badge-soft success">启用</span>
+                        {% else %}<span class="badge-soft secondary">停用</span>{% endif %}
+                    </td>
+                    <td class="text-end text-nowrap">
+                        <a href="{% url 'herbs:edit' herb.pk %}" class="btn btn-sm btn-outline-secondary">编辑</a>
+                        <form method="post" action="{% url 'herbs:delete' herb.pk %}" class="d-inline"
+                              data-confirm="确定删除药材「{{ herb.name }}」吗？">
+                            {% csrf_token %}
+                            <button class="btn btn-sm btn-outline-danger">删除</button>
+                        </form>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="10"><div class="empty-state"><i class="bi bi-journal-x"></i>没有符合条件的药材</div></td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% include "includes/pagination.html" %}
+{% endblock %}

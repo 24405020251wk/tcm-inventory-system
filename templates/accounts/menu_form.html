@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{% if instance %}编辑菜单{% else %}新增菜单{% endif %}{% endblock %}
+{% block page_title %}{% if instance %}编辑菜单{% else %}新增菜单{% endif %}{% endblock %}
+{% block page_sub %}菜单编码与视图装饰器 @menu_required 中的 code 保持一致{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="form-card">
+            <form method="post" novalidate>
+                {% csrf_token %}
+                <div class="row g-3">
+                    {% for field in form %}
+                        <div class="col-md-6">
+                            <label class="form-label {% if field.field.required %}required{% endif %}">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                            {% if field.errors %}<ul class="errorlist"><li>{{ field.errors.0 }}</li></ul>{% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+                <div class="d-flex gap-2 mt-4">
+                    <button class="btn btn-tcm">保存</button>
+                    <a href="{% url 'accounts:menu_list' %}" class="btn btn-outline-secondary">返回</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
