@@ -1,0 +1,17 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+logs
+media
+docs_extract
+run.bat
+serve.bat
+*.vbs
+stop_server.bat
+install_*.bat
+uninstall_*.bat
+watchdog_batch.bat
+.idea
+.vscode
