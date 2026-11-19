@@ -19,7 +19,15 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [2/2] Starting dev server at http://127.0.0.1:8000
+echo [2/3] Seeding demo data (idempotent, skips if data exists)...
+"%PYTHON%" manage.py init_demo
+if errorlevel 1 (
+    echo [ERROR] init_demo failed.
+    pause
+    exit /b 1
+)
+
+echo [3/3] Starting dev server at http://127.0.0.1:8000
 start "" "http://127.0.0.1:8000/accounts/login/"
 "%PYTHON%" manage.py runserver 127.0.0.1:8000
 
