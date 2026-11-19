@@ -116,50 +116,95 @@
 {% block extra_js %}
 <script src="{% static 'vendor/echarts.min.js' %}"></script>
 <script>
-const stats = JSON.parse(document.getElementById("stats-data").textContent);
-const palette = ["#2f6b4f", "#4f8f6d", "#7db093", "#b5893f", "#d8b877", "#8fa9b8", "#bfa3c9", "#9fb98a"];
-const axisStyle = { axisLine: { lineStyle: { color: "#dbe4de" } }, axisLabel: { color: "#7a8a81" } };
+(function () {
+    "use strict";
+    const charts = [];
+    const palette = ["#2f6b4f", "#4f8f6d", "#7db093", "#b5893f", "#d8b877", "#8fa9b8", "#bfa3c9", "#9fb98a"];
+    const axisStyle = { axisLine: { lineStyle: { color: "#dbe4de" } }, axisLabel: { color: "#7a8a81" } };
 
-const cat = echarts.init(document.getElementById("catChart"));
-cat.setOption({
-    color: palette,
-    tooltip: { trigger: "item", formatter: "{b}<br/>{c} kg（{d}%）" },
-    legend: { bottom: 0, icon: "circle", itemWidth: 8, itemHeight: 8, textStyle: { fontSize: 11 } },
-    series: [{
-        type: "pie", radius: ["40%", "66%"], center: ["50%", "44%"],
-        itemStyle: { borderColor: "#fff", borderWidth: 2 }, label: { show: false },
-        data: stats.category.labels.map((l, i) => ({ name: l, value: stats.category.values[i] }))
-    }]
-});
+    function showMessage(id, message) {
+        const box = document.getElementById(id);
+        if (box) {
+            box.innerHTML = '<div class="empty-state py-5"><i class="bi bi-info-circle"></i>' + message + '</div>';
+        }
+    }
 
-const top = echarts.init(document.getElementById("topChart"));
-top.setOption({
-    grid: { left: 10, right: 30, top: 16, bottom: 10, containLabel: true },
-    tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-    xAxis: { type: "value", splitLine: { lineStyle: { color: "#eef3ef" } }, axisLabel: { color: "#8a9991" } },
-    yAxis: { type: "category", data: stats.top.labels.slice().reverse(), ...axisStyle,
-             axisLine: { show: false }, axisTick: { show: false } },
-    series: [{ type: "bar", data: stats.top.values.slice().reverse(), barWidth: 14,
-               itemStyle: { color: "#2f6b4f", borderRadius: [0, 6, 6, 0] },
-               label: { show: true, position: "right", color: "#6b7a72", fontSize: 11 } }]
-});
+    function mount(id, option) {
+        const box = document.getElementById(id);
+        if (!box) return null;
+        const chart = echarts.init(box);
+        chart.setOption(option);
+        charts.push(chart);
+        return chart;
+    }
 
-const trend = echarts.init(document.getElementById("trendChart"));
-trend.setOption({
-    color: ["#2f6b4f", "#b5893f"],
-    tooltip: { trigger: "axis" },
-    legend: { data: ["入库", "出库"], right: 0, top: 0, icon: "roundRect", itemWidth: 10, itemHeight: 10 },
-    grid: { left: 10, right: 20, top: 40, bottom: 10, containLabel: true },
-    xAxis: { type: "category", data: stats.trend.labels, boundaryGap: false, ...axisStyle },
-    yAxis: { type: "value", splitLine: { lineStyle: { color: "#eef3ef" } }, axisLabel: { color: "#8a9991" } },
-    series: [
-        { name: "入库", type: "line", smooth: true, symbolSize: 6, data: stats.trend.in,
-          areaStyle: { color: "rgba(47,107,79,.10)" } },
-        { name: "出库", type: "line", smooth: true, symbolSize: 6, data: stats.trend.out,
-          areaStyle: { color: "rgba(181,137,63,.10)" } }
-    ]
-});
+    const dataNode = document.getElementById("stats-data");
+    if (!dataNode) return;
+    let stats;
+    try {
+        stats = JSON.parse(dataNode.textContent);
+    } catch (err) {
+        ["catChart", "topChart", "trendChart"].forEach((id) => showMessage(id, "统计数据解析失败，请刷新页面重试"));
+        return;
+    }
+    if (typeof echarts === "undefined") {
+        ["catChart", "topChart", "trendChart"].forEach((id) => showMessage(id, "图表组件加载失败，请刷新页面重试"));
+        return;
+    }
 
-window.addEventListener("resize", () => { cat.resize(); top.resize(); trend.resize(); });
+    const category = stats.category || { labels: [], values: [] };
+    if (category.values.some((v) => Number(v) > 0)) {
+        mount("catChart", {
+            color: palette,
+            tooltip: { trigger: "item", formatter: "{b}<br/>{c} kg（{d}%）" },
+            legend: { bottom: 0, icon: "circle", itemWidth: 8, itemHeight: 8, textStyle: { fontSize: 11 } },
+            series: [{
+                type: "pie", radius: ["40%", "66%"], center: ["50%", "44%"],
+                itemStyle: { borderColor: "#fff", borderWidth: 2 }, label: { show: false },
+                data: category.labels.map((label, i) => ({ name: label, value: category.values[i] }))
+            }]
+        });
+    } else {
+        showMessage("catChart", "暂无库存数据");
+    }
+
+    const top = stats.top || { labels: [], values: [] };
+    if (top.labels.length) {
+        mount("topChart", {
+            grid: { left: 10, right: 30, top: 16, bottom: 10, containLabel: true },
+            tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
+            xAxis: { type: "value", splitLine: { lineStyle: { color: "#eef3ef" } }, axisLabel: { color: "#8a9991" } },
+            yAxis: { type: "category", data: top.labels.slice().reverse(), ...axisStyle,
+                     axisLine: { show: false }, axisTick: { show: false } },
+            series: [{ type: "bar", data: top.values.slice().reverse(), barWidth: 14,
+                       itemStyle: { color: "#2f6b4f", borderRadius: [0, 6, 6, 0] },
+                       label: { show: true, position: "right", color: "#6b7a72", fontSize: 11 } }]
+        });
+    } else {
+        showMessage("topChart", "暂无库存数据");
+    }
+
+    const trend = stats.trend || { labels: [], in: [], out: [] };
+    if (trend.in.some((v) => Number(v) !== 0) || trend.out.some((v) => Number(v) !== 0)) {
+        mount("trendChart", {
+            color: ["#2f6b4f", "#b5893f"],
+            tooltip: { trigger: "axis" },
+            legend: { data: ["入库", "出库"], right: 0, top: 0, icon: "roundRect", itemWidth: 10, itemHeight: 10 },
+            grid: { left: 10, right: 20, top: 40, bottom: 10, containLabel: true },
+            xAxis: { type: "category", data: trend.labels, boundaryGap: false, ...axisStyle },
+            yAxis: { type: "value", splitLine: { lineStyle: { color: "#eef3ef" } }, axisLabel: { color: "#8a9991" } },
+            series: [
+                { name: "入库", type: "line", smooth: true, symbolSize: 6, data: trend.in,
+                  areaStyle: { color: "rgba(47,107,79,.10)" } },
+                { name: "出库", type: "line", smooth: true, symbolSize: 6, data: trend.out,
+                  areaStyle: { color: "rgba(181,137,63,.10)" } }
+            ]
+        });
+    } else {
+        showMessage("trendChart", "近 6 个月暂无出入库流水");
+    }
+
+    window.addEventListener("resize", () => charts.forEach((chart) => chart.resize()));
+})();
 </script>
 {% endblock %}

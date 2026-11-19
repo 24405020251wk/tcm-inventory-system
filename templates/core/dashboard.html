@@ -176,48 +176,86 @@
 {% block extra_js %}
 <script src="{% static 'vendor/echarts.min.js' %}"></script>
 <script>
-const chartData = JSON.parse(document.getElementById("dashboard-chart").textContent);
-const greenPalette = ["#2f6b4f", "#4f8f6d", "#7db093", "#b5893f", "#d8b877", "#8fa9b8", "#bfa3c9", "#9fb98a"];
+(function () {
+    "use strict";
+    const charts = [];
+    const greenPalette = ["#2f6b4f", "#4f8f6d", "#7db093", "#b5893f", "#d8b877", "#8fa9b8", "#bfa3c9", "#9fb98a"];
 
-const categoryChart = echarts.init(document.getElementById("categoryChart"));
-categoryChart.setOption({
-    color: greenPalette,
-    tooltip: { trigger: "item", formatter: "{b}<br/>{c} kg（{d}%）" },
-    legend: { bottom: 0, icon: "circle", itemWidth: 8, itemHeight: 8, textStyle: { fontSize: 11 } },
-    series: [{
-        type: "pie",
-        radius: ["42%", "68%"],
-        center: ["50%", "44%"],
-        avoidLabelOverlap: true,
-        itemStyle: { borderColor: "#fff", borderWidth: 2 },
-        label: { show: false },
-        data: chartData.category.labels.map((label, i) => ({ name: label, value: chartData.category.values[i] }))
-    }]
-});
+    function showMessage(id, message) {
+        const box = document.getElementById(id);
+        if (box) {
+            box.innerHTML = '<div class="empty-state py-5"><i class="bi bi-info-circle"></i>' + message + '</div>';
+        }
+    }
 
-const topChart = echarts.init(document.getElementById("topChart"));
-topChart.setOption({
-    grid: { left: 10, right: 24, top: 20, bottom: 10, containLabel: true },
-    tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-    xAxis: { type: "value", splitLine: { lineStyle: { color: "#eef3ef" } }, axisLabel: { color: "#8a9991" } },
-    yAxis: {
-        type: "category",
-        data: chartData.top.labels.slice().reverse(),
-        axisLine: { show: false }, axisTick: { show: false },
-        axisLabel: { color: "#4b5a52" }
-    },
-    series: [{
-        type: "bar",
-        data: chartData.top.values.slice().reverse(),
-        barWidth: 14,
-        itemStyle: { color: "#2f6b4f", borderRadius: [0, 6, 6, 0] },
-        label: { show: true, position: "right", color: "#6b7a72", fontSize: 11 }
-    }]
-});
+    function mount(id, option) {
+        const box = document.getElementById(id);
+        if (!box) return null;
+        const chart = echarts.init(box);
+        chart.setOption(option);
+        charts.push(chart);
+        return chart;
+    }
 
-window.addEventListener("resize", () => {
-    categoryChart.resize();
-    topChart.resize();
-});
+    const dataNode = document.getElementById("dashboard-chart");
+    if (!dataNode) return;
+    let chartData;
+    try {
+        chartData = JSON.parse(dataNode.textContent);
+    } catch (err) {
+        ["categoryChart", "topChart"].forEach((id) => showMessage(id, "统计数据解析失败，请刷新页面重试"));
+        return;
+    }
+    if (typeof echarts === "undefined") {
+        ["categoryChart", "topChart"].forEach((id) => showMessage(id, "图表组件加载失败，请刷新页面重试"));
+        return;
+    }
+
+    const category = chartData.category || { labels: [], values: [] };
+    if (category.values.some((v) => Number(v) > 0)) {
+        mount("categoryChart", {
+            color: greenPalette,
+            tooltip: { trigger: "item", formatter: "{b}<br/>{c} kg（{d}%）" },
+            legend: { bottom: 0, icon: "circle", itemWidth: 8, itemHeight: 8, textStyle: { fontSize: 11 } },
+            series: [{
+                type: "pie",
+                radius: ["42%", "68%"],
+                center: ["50%", "44%"],
+                avoidLabelOverlap: true,
+                itemStyle: { borderColor: "#fff", borderWidth: 2 },
+                label: { show: false },
+                data: category.labels.map((label, i) => ({ name: label, value: category.values[i] }))
+            }]
+        });
+    } else {
+        showMessage("categoryChart", "暂无库存数据");
+    }
+
+    const top = chartData.top || { labels: [], values: [] };
+    if (top.labels.length) {
+        mount("topChart", {
+            grid: { left: 10, right: 24, top: 20, bottom: 10, containLabel: true },
+            tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
+            xAxis: { type: "value", splitLine: { lineStyle: { color: "#eef3ef" } }, axisLabel: { color: "#8a9991" } },
+            yAxis: {
+                type: "category",
+                data: top.labels.slice().reverse(),
+                axisLine: { show: false }, axisTick: { show: false },
+                axisLabel: { color: "#4b5a52" }
+            },
+            series: [{
+                type: "bar",
+                data: top.values.slice().reverse(),
+                barWidth: 14,
+                itemStyle: { color: "#2f6b4f", borderRadius: [0, 6, 6, 0] },
+                label: { show: true, position: "right", color: "#6b7a72", fontSize: 11 }
+            }]
+        });
+    } else {
+        showMessage("topChart", "暂无库存数据");
+    }
+
+    window.addEventListener("resize", () => charts.forEach((chart) => chart.resize()));
+})();
 </script>
 {% endblock %}
